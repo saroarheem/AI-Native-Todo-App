@@ -1,0 +1,26 @@
+.header-div {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  justify-content: space-around;
+}
+a{
+  color: white;
+  text-decoration: none;
+}
+.header-div h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+button{
+  background-color: rgb(118, 118, 222);
+  color: white;
+  width: 100px;
+  border-radius: 10px;
+}

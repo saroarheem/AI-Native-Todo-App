@@ -1,3 +1,11 @@
 import { Routes } from '@angular/router';
+import { CreateTodo } from './create-todo/create-todo';
+import { TodoList } from './todo-list/todo-list';
+import { EditTodo } from './edit-todo/edit-todo';
 
-export const routes: Routes = [];
+export const routes: Routes = [
+    {path: "list", component: TodoList},
+    {path: "create", component: CreateTodo},
+    {path: "todo/:id", component: EditTodo},
+    {path: "", redirectTo:"list", pathMatch: "full"}
+];

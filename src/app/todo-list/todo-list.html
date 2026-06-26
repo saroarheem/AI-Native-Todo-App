@@ -1,0 +1,12 @@
+
+<div class="cards-container">
+  @for (obj of arr; track obj.id) {
+    <div class="card">
+      <h3>Title: {{obj.title}}</h3>
+      <h3>Description:</h3>
+      <p>{{obj.description}}</p>
+      <button class="delete-btn" (click)="delete(obj.id)">Delete</button>
+      <button class="edit-btn" [routerLink]="['/todo',obj.id]">Edit</button>
+    </div>
+  }
+</div>

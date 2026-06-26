@@ -1,0 +1,65 @@
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card h3 {
+  margin: 0.5rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.card p {
+  margin-top: 0.5rem;
+  color: #666;
+  line-height: 1.6;
+}
+
+body {
+  background-color: #f4f6f9;
+  font-family: Arial, sans-serif;
+}
+
+.cards-container {
+  min-height: 70vh;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  /* grid-template-columns: auto auto; */
+  gap: 1rem;
+  padding: 1rem;
+  align-items: flex-start;
+}
+.delete-btn{
+  background-color: rgba(255, 53, 53, 0.647);
+  color: white;
+  border: none;
+  height: 30px;
+  width: 60px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.edit-btn{
+  background-color: rgba(53, 107, 255, 0.647);
+  margin-left: 5px;
+  color: white;
+  border: none;
+  height: 30px;
+  width: 60px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.delete-btn:hover{
+  background-color: rgba(255, 0, 0, 0.647);
+}
+.edit-btn:hover{
+  background-color: rgba(0, 68, 255, 0.647);
+}
