@@ -7,6 +7,7 @@
       <p>{{obj.description}}</p>
       <button class="delete-btn" (click)="delete(obj.id)">Delete</button>
       <button class="edit-btn" [routerLink]="['/todo',obj.id]">Edit</button>
+      <p class="status" [style.background] = "obj.status === 'due'? 'rgba(255, 113, 113, 0.515)' : 'rgba(146, 255, 146, 0.542)'">{{obj.status}}</p>
     </div>
   }
 </div>

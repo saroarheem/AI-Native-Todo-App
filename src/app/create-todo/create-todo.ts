@@ -16,8 +16,11 @@ export class CreateTodo {
 
   form = this.formBuilder.group({
     title:[''],
-    description:['']
-  })
+    description:[''],
+    status:['due']
+  });
+
+  
 
   onSubmit(){
 
@@ -26,7 +29,8 @@ export class CreateTodo {
     const newTodo = {
       id: this.data.todos[todoLength-1].id + 1,
       title: formData.title??'',
-      description: formData.description??''
+      description: formData.description??'',
+      status: formData.status??'due',
     };
     this.data.addUser(newTodo);
     this.form.reset();

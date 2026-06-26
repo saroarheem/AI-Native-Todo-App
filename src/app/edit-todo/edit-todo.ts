@@ -22,6 +22,7 @@ export class EditTodo implements OnInit {
       this.form.patchValue({
         title: todo.title,
         description: todo.description,
+        status:todo.status
       });
     }
   }
@@ -29,15 +30,18 @@ export class EditTodo implements OnInit {
   form = this.formBuilder.group({
     title: [''],
     description: [''],
+    status:['']
   });
+
   todoid!: number;
   onSubmit() {
     const formData = this.form.getRawValue();
 
     this.data.updateTodo(
-      (this.todoid = Number(this.route.snapshot.paramMap.get('id'))),
+      this.todoid = Number(this.route.snapshot.paramMap.get('id')),
       formData.title ?? '',
       formData.description ?? '',
+      formData.status ?? ''
     );
     this.form.reset();
     this.router.navigateByUrl('/list')

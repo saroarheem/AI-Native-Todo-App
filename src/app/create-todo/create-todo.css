@@ -63,3 +63,39 @@ button:hover {
 button:active {
   transform: translateY(0);
 }
+
+.select-div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.select-div label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.select-div select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: #333;
+  background-color: #fff;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  appearance: none;
+}
+
+.select-div select:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+}
+
+.select-div select:hover {
+  border-color: #4f46e5;
+}

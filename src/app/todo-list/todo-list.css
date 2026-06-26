@@ -5,6 +5,7 @@
   margin: 1rem 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
 }
 
 .card:hover {
@@ -62,4 +63,15 @@ body {
 }
 .edit-btn:hover{
   background-color: rgba(0, 68, 255, 0.647);
+}
+.status{
+  background: rgba(255, 113, 113, 0.515);
+  color: black !important;
+  font-weight: bold;
+  display: inline-block;
+  position: absolute;
+  right: 40px;
+  width: 50px;
+  text-align: center;
+  border-radius: 20px;
 }
