@@ -1,13 +1,85 @@
+<div class="list-container">
+  <!-- side nav code start -->
+  <div>
+    <nav class="side-bar" [class.closed]="!isSideBarOpen">
+      <header>
+        <div class="image-text">
+          <span class="image">
+            <img src="TodoListLogo.jpg" alt="logo" />
+            @if (isSideBarOpen) {
+              <i class="bx bx-chevron-left arrow" (click)="toggleSidebar()"></i>
+            } @else {
+              <i class="bx bx-chevron-right arrow" (click)="toggleSidebar()"></i>
+            }
+          </span>
+        </div>
+      </header>
+      <div class="sidebar-content">
+        <div class="search">
+          <div class="content-header">
+          <p>Search</p>
+        </div>
+        <div class="search-box">
+          <i class="bx bx-search icon"></i>
+          <input type="text" [(ngModel)]="searchText" (input)="onSearch()" placeholder="Search..." />
+        </div>
+        </div>
+        <div class="filter-box">
+          <div class="content-header">
+          <p>Filter</p>
+        </div>
+        <div class="content">
+          <div class="filter">
+            <p class="filter-text">Select To filter</p>
+            <form [formGroup]="form">
+              <label>
+                <input type="checkbox" formControlName="due" />
+                Due
+              </label>
+              <label>
+                <input type="checkbox" formControlName="done" />
+                Done
+              </label>
+              <!-- <button type="submit">Filter</button> -->
+            </form>
+          </div>
+        </div>
+        </div>
+      </div>
+    </nav>
+  </div>
 
-<div class="cards-container">
-  @for (obj of arr; track obj.id) {
-    <div class="card">
-      <h3>Title: {{obj.title}}</h3>
-      <h3>Description:</h3>
-      <p>{{obj.description}}</p>
-      <button class="delete-btn" (click)="delete(obj.id)">Delete</button>
-      <button class="edit-btn" [routerLink]="['/todo',obj.id]">Edit</button>
-      <p class="status" [style.background] = "obj.status === 'due'? 'rgba(255, 113, 113, 0.515)' : 'rgba(146, 255, 146, 0.542)'">{{obj.status}}</p>
-    </div>
-  }
+  <!-- side nav code end -->
+
+  <div
+    class="cards-container"
+    [class.no-transition]="isInitialLoad"
+    [class.reduce-cards-container]="isSideBarOpen"
+  >
+    @for (obj of arr; track obj.id) {
+      <div class="card">
+        <h3 class="title-header">Title: {{ obj.title }}</h3>
+        <div class="description">
+          <h3>Description:</h3>
+          <p>{{ obj.description }}</p>
+        </div>
+        <div class="btn-box">
+          <button class="delete-btn" (click)="delete(obj.id)">Delete</button>
+          <button class="edit-btn" [routerLink]="['/todo', obj.id]">Edit</button>
+          <p
+            class="status"
+            [style.background]="
+              obj.status === 'due' ? 'rgba(255, 113, 113, 0.515)' : 'rgba(146, 255, 146, 0.542)'
+            "
+          >
+            {{ obj.status }}
+          </p>
+        </div>
+      </div>
+    }
+  </div>
 </div>
+
+<!-- test start -->
+
+<!-- test end -->

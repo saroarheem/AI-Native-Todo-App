@@ -1,3 +1,4 @@
+
 .header-div {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
   color: white;
@@ -7,6 +8,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   display: flex;
   justify-content: space-around;
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 1;
 }
 a{
   color: white;

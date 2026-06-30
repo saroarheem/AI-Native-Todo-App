@@ -13,31 +13,41 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
 
-.card h3 {
-  margin: 0.5rem 0;
+.card .title-header {
+  margin: 1rem 0;
   color: #333;
+  font-size: 1.1rem;
+}
+.description h3{
   font-size: 1.1rem;
 }
 
 .card p {
-  margin-top: 0.5rem;
   color: #666;
   line-height: 1.6;
 }
 
-body {
-  background-color: #f4f6f9;
-  font-family: Arial, sans-serif;
-}
-
 .cards-container {
-  min-height: 70vh;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  /* grid-template-columns: auto auto; */
   gap: 1rem;
   padding: 1rem;
   align-items: flex-start;
+  transition: margin-left 0.3s ease;
+}
+
+.no-transition {
+  transition: none !important;
+}
+
+.description{
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.btn-box{
+  margin-top: 1rem;
 }
 .delete-btn{
   background-color: rgba(255, 53, 53, 0.647);
@@ -75,3 +85,108 @@ body {
   text-align: center;
   border-radius: 20px;
 }
+
+
+
+/* side nav css start   */
+.side-bar{
+  padding: 20px;
+  position: fixed;
+  height: 100%;
+  width: 250px;
+  background: white;
+  top: 100px;
+  transition: all 0.3s ease;
+}
+header .image-text{
+  display: flex;
+  justify-content: center;
+}
+header .image-text img{
+  height: 100px;
+  width: 100px;
+}
+header{
+  position: relative;
+  margin-bottom: 20px;
+}
+header .arrow{
+  position: absolute;
+  background: rgb(132, 132, 224);
+  color: white;
+  border-radius: 50%;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 30px;
+  width: 30px;
+  font-size: 30px;
+}
+.closed{
+  /* width: 50px; */
+  transform: translateX(-250px);
+}
+.reduce-cards-container{
+  margin-left: 250px;
+}
+.sidebar-content{
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.sidebar-content .content-header{
+  height: 50px;
+  width: 100%;
+  font-size: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.content .filter-text{
+  font-size: 20px;
+  color: var(--text-color);
+}
+.sidebar-content .content .filter form{
+  display: flex;
+  flex-direction: column;
+  font-size: 18px;
+  row-gap: 0.5rem;
+  margin-top: 1rem;
+  color: var(--text-color)
+}
+/* search box  */ 
+.search-box{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-color);
+}
+.search-box .icon{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  width: 50px;
+  font-size: 30px;
+}
+.search-box input{
+  height: 50px;
+  width: 100%;
+  padding: 10px;
+  outline: none;
+  border: 2px solid rgb(162, 162, 162);
+  background: var(--primary-color-light);
+  border-radius: 6px;
+  font-size: 16px;
+}
+.search-box input::placeholder{
+  color: gray;
+  font-size: 16px;
+}
+
+/* side nav css end */
+
+/* test start  */
+
+
+/* test end  */

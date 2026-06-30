@@ -32,7 +32,7 @@ export class CreateTodo {
       description: formData.description??'',
       status: formData.status??'due',
     };
-    this.data.addUser(newTodo);
+    this.data.addTodo(newTodo);
     this.form.reset();
     this.router.navigateByUrl('/list')
   }

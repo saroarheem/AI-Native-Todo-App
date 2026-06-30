@@ -8,34 +8,34 @@ export class Data {
     {
       id: 1,
       title: 'Learn Html',
-      description: 'i have to learn html in order to learn angular',
+      description: 'I have to learn html in order to learn angular',
       status: "done"
     },
     {
       id: 2,
       title: 'Learn Css',
-      description: 'i have to learn css in order to learn angular',
-      status: "done"
+      description: 'I have to learn css in order to learn angular',
+      status: "due"
     },
     {
       id: 3,
       title: 'Learn js',
-      description: 'i have to learn js in order to learn angular',
+      description: 'I have to learn js in order to learn angular',
       status: "done"
     },
     {
       id: 4,
       title: 'Learn array',
-      description: 'i have to learn array in order to learn angular',
-      status: "done"
+      description: 'I have to learn array in order to learn angular',
+      status: "due"
     }
   ];
 
-  addUser(user: SingleTodo) {
-    this.todos.push(user);
+  addTodo(todo: SingleTodo) {
+    this.todos.push(todo);
   }
 
-  getUsers() {
+  getTodos() {
     return this.todos;
   }
 
