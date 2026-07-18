@@ -110,3 +110,8 @@ Optimized build artifacts are written to the `dist/` directory.
 ## License
 
 This project is private and not currently published under an open-source license.
+
+## PR bot test
+
+I am dooing a typing misstake
+Doing iit foor second tiime
