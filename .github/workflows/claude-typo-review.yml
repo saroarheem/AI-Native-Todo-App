@@ -1,0 +1,216 @@
+name: Claude Typo Review & Auto-Fix
+
+# Runs a Claude-powered bot on every pull request. It scans the changed lines for
+# typos and AUTOMATICALLY fixes the safe ones (typos in code comments and in
+# Markdown/documentation prose), pushing the fix to the PR branch. Typos anywhere
+# riskier (string literals / UI text, identifier names) are only reported for a
+# human to decide.
+#
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ ACTION POLICY                                                               │
+# ├───────────────────────────────────────────────────────────────────────────┤
+# │ ✅ AUTOMATIC  — Fixing typos that live ONLY in code comments or in           │
+# │                 Markdown/text documentation, verifying the project still     │
+# │                 builds, then committing and pushing to the PULL REQUEST      │
+# │                 branch (never `main`). PR review + merge stays the human      │
+# │                 gate before it lands anywhere protected.                     │
+# │                                                                             │
+# │ 🛑 NEEDS HUMAN APPROVAL — Typos in string literals / user-facing text, in    │
+# │                 identifiers (variable/function/class names), or in config;   │
+# │                 any edit that would break the build; changes to unexpected   │
+# │                 file types; and fork PRs. In these cases the bot changes     │
+# │                 nothing there and posts the items as a PR comment.           │
+# └───────────────────────────────────────────────────────────────────────────┘
+#
+# The "must still build" and "only comment/doc file types" invariants are enforced
+# by the workflow steps below, not by trusting the model's self-report.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write # to push safe typo fixes to the PR branch
+  pull-requests: write # to post the result comment
+  id-token: write # required by claude-code-action to request an OIDC token
+
+jobs:
+  typo-review:
+    runs-on: ubuntu-latest
+    # Only run for same-repo PRs. Fork PRs get a read-only token and no secrets,
+    # so the bot can neither push a fix nor comment — those are left for a human.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Check out the PR's own branch (not the detached merge ref) so a fix
+          # can be pushed back to it.
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Claude scans and fixes safe typos
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Lets the `gh` CLI calls Claude makes authenticate against this repo.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are a typo-checking bot for pull requests. Be strict and concise.
+
+            Repository: ${{ github.repository }}
+            PR number: ${{ github.event.pull_request.number }}
+
+            ## Steps
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the
+               diff for this PR.
+            2. Review ONLY the added/changed lines (lines starting with `+`) for
+               spelling mistakes and typos.
+            3. Sort each typo you find into exactly one of two buckets:
+
+            ### Bucket A — AUTO-FIX (you SHOULD fix these directly)
+            Typos located in:
+              - code comments (e.g. `//`, `/* */`, `<!-- -->`), and
+              - Markdown / plain-text documentation prose (`*.md`, `*.txt`).
+            Fix these by editing the file in place. These are safe because they do
+            not change program behavior.
+
+            ### Bucket B — REPORT ONLY (you must NOT edit these)
+            Typos located in:
+              - string literals / user-facing UI text,
+              - identifiers (variable / function / class / property names),
+              - configuration files, keys, or any executable code token.
+            Do NOT edit these — a human must decide. Just list them.
+
+            ## Ignore
+            Non-typos: code style, logic, formatting, naming preferences,
+            intentional abbreviations, technical jargon, framework keywords, and
+            valid code tokens. When unsure whether something is a real typo, leave
+            it in Bucket B (report) rather than editing it.
+
+            ## Report (REQUIRED — always write this before finishing)
+            Write a Markdown file named exactly `typo-report.md` in the repository
+            root (the current working directory). The Write tool can only create
+            files inside the repo; the workflow moves this file out of the tree
+            before inspecting your changes, so it is NOT treated as a code change.
+
+            The VERY FIRST line must be exactly one of:
+              STATUS: FIXED          (you fixed at least one Bucket-A typo)
+              STATUS: APPROVAL_ONLY  (you found typos but ALL were Bucket B)
+              STATUS: CLEAN          (no typos at all)
+            Then a blank line, then:
+              ## ✅ Auto-fixed (comments & docs)
+              - `path/to/file:line` — "wrong" → "correct"
+              (or "None")
+
+              ## 🛑 Needs human approval
+              - `path/to/file:line` — "wrong" → "correct"  (why: string / identifier)
+              (or "None")
+
+            ## Hard rules
+              - Fix ONLY Bucket-A typos, and ONLY inside comments or Markdown/text.
+              - Do NOT edit any code, string literal, identifier, or config.
+              - Do NOT run git commit, git push, or gh pr comment. The workflow
+                commits, pushes, and comments AFTER re-verifying your work.
+              - Writing `typo-report.md` is mandatory. If you run low on turns,
+                stop and write the report immediately.
+          claude_args: |
+            --max-turns 15
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Read,Grep,Glob,Edit,Write"
+
+      - name: Verify, then push safe fixes or escalate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        run: |
+          set -euo pipefail
+
+          # Claude writes its report inside the repo (its file tools are sandboxed
+          # to the workspace). Move it OUT of the tree so it is never counted as a
+          # proposed code change by the safety gate below.
+          REPORT="$RUNNER_TEMP/typo-report.md"
+          if [ -f typo-report.md ]; then
+            mv typo-report.md "$REPORT"
+          fi
+
+          # Ensure a report always exists, even if the Claude step errored.
+          if [ ! -f "$REPORT" ]; then
+            printf 'STATUS: ERROR\n\nThe typo bot did not produce a report (Claude step outcome: %s). Check the workflow run logs for the "Claude scans and fixes safe typos" step.\n' "$CLAUDE_OUTCOME" > "$REPORT"
+          fi
+
+          STATUS=$(head -n 1 "$REPORT" | sed -n 's/^STATUS:[[:space:]]*//p')
+          [ -z "$STATUS" ] && STATUS="UNKNOWN"
+
+          # Compose a comment: a marker banner followed by the bot's report body.
+          comment() { printf '%s\n\n---\n\n%s\n' "$1" "$(cat "$REPORT")"; }
+
+          # Stage everything except the report so we can inspect the proposed diff.
+          git add -A -- ':!typo-report.md'
+          CHANGED=$(git diff --cached --name-only || true)
+
+          if [ -n "$CHANGED" ]; then
+            # SAFETY GATE 1 (workflow-enforced): only comment/doc-bearing file
+            # types may be auto-fixed. A code change triggers a build check.
+            UNSAFE=0
+            NEEDS_BUILD=0
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              case "$f" in
+                *.md|*.markdown|*.txt) ;;                  # prose: no build impact
+                *.ts|*.html|*.css|*.scss) NEEDS_BUILD=1 ;; # source: verify it builds
+                *) UNSAFE=1; echo "Refusing to auto-apply: unexpected file changed -> $f" ;;
+              esac
+            done <<< "$CHANGED"
+
+            if [ "$UNSAFE" -eq 1 ]; then
+              git reset --hard
+              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The bot tried to change files outside comments/docs, so nothing was pushed. Details below.')"
+              exit 0
+            fi
+
+            # SAFETY GATE 2 (workflow-enforced): if any source file was touched,
+            # the project must still build. A comment-only edit keeps it green.
+            if [ "$NEEDS_BUILD" -eq 1 ]; then
+              npm ci
+              if ! npm run build; then
+                git reset --hard
+                gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The typo edits would break the build, so nothing was pushed. A human should apply them. Details below.')"
+                exit 0
+              fi
+            fi
+
+            # Safe -> push automatically to the PR branch.
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit \
+              -m "docs: auto-fix typos in comments/docs (bot)" \
+              -m "Applied automatically by the Claude typo bot. Only comment and documentation text was changed. See the PR comment for details." \
+              -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+            git push origin "HEAD:${HEAD_REF}"
+            SHA=$(git rev-parse --short HEAD)
+            FILES=$(echo "$CHANGED" | paste -sd ',' - | sed 's/,/, /g')
+            gh pr comment "$PR" --body "$(comment "✅ **[AUTOMATIC]** Fixed typos in comments/docs (${FILES}), verified the build, and pushed \`${SHA}\` to this PR branch. Anything needing human approval is listed below.")"
+            exit 0
+          fi
+
+          # No files were changed by the bot.
+          case "$STATUS" in
+            CLEAN)
+              gh pr comment "$PR" --body "$(comment '✅ No typos found in the changed lines.')" ;;
+            APPROVAL_ONLY)
+              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** Found typos that should not be auto-fixed (in identifiers or strings). A human should decide. Details below.')" ;;
+            *)
+              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The typo bot did not complete normally. Details below.')" ;;
+          esac
