@@ -2,6 +2,11 @@ name: Claude Typo Review
 
 # Runs a Claude-powered bot on every pull request that scans the changed lines
 # for typos/spelling mistakes and posts a short report as a PR comment.
+#
+# ACTION POLICY:
+#   ✅ AUTOMATIC — Posting a single read-only PR comment listing typos.
+#   🛑 NEEDS HUMAN APPROVAL — Everything else. This bot never edits code, pushes,
+#      applies suggestions, or merges; a human decides what to do with the report.
 
 on:
   pull_request:
