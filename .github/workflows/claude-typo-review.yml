@@ -198,7 +198,10 @@ jobs:
               -m "docs: auto-fix typos in comments/docs (bot)" \
               -m "Applied automatically by the Claude typo bot. Only comment and documentation text was changed. See the PR comment for details." \
               -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-            git push origin "HEAD:${HEAD_REF}"
+            # Push with an explicitly tokenized URL rather than relying on the
+            # credentials actions/checkout persists (which can be reset by earlier
+            # steps). GH_TOKEN is masked in logs; GITHUB_REPOSITORY is built in.
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${HEAD_REF}"
             SHA=$(git rev-parse --short HEAD)
             FILES=$(echo "$CHANGED" | paste -sd ',' - | sed 's/,/, /g')
             gh pr comment "$PR" --body "$(comment "✅ **[AUTOMATIC]** Fixed typos in comments/docs (${FILES}), verified the build, and pushed \`${SHA}\` to this PR branch. Anything needing human approval is listed below.")"
