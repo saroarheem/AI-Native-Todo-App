@@ -15,6 +15,7 @@ export class EditTodo implements OnInit {
   private data = inject(Data);
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    
 
     const todo = this.data.getTodoById(id);
 
