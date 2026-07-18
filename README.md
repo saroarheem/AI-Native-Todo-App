@@ -1,59 +1,112 @@
-# ToDo
+# ToDo — Todo List App
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.1.
+A lightweight task manager built with Angular. Create, edit, delete, filter, and search todo items through a clean, responsive interface. The app uses standalone components, signals, and Angular's modern control-flow template syntax.
 
-## Development server
+> **Note:** Todos are held in memory only. The list resets to its seed data on every page reload — there is no backend or persistence layer.
 
-To start a local development server, run:
+## Features
 
-```bash
-ng serve
-```
+- **Create** todos with a title, description, and status (`due` / `done`).
+- **Edit** any existing todo through a dedicated route (`/todo/:id`).
+- **Delete** todos directly from the list.
+- **Filter** the list by status using sidebar checkboxes (Due / Done).
+- **Search** todos by title in real time.
+- **Collapsible sidebar** for search and filter controls.
+- **404 page** for unknown routes.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Tech Stack
 
-## Code scaffolding
+| Concern          | Choice                                             |
+| ---------------- | -------------------------------------------------- |
+| Framework        | Angular 22 (standalone components, signals)        |
+| Language         | TypeScript                                         |
+| Forms            | Reactive Forms + `FormsModule` (`ngModel`)         |
+| Build system     | `@angular/build:application` (esbuild)             |
+| Unit testing     | [Vitest](https://vitest.dev/) + jsdom              |
+| Formatting       | Prettier                                           |
+| Icons            | [Boxicons](https://boxicons.com/) (via CDN)        |
+| Package manager  | npm                                                |
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Prerequisites
 
-```bash
-ng generate component component-name
-```
+- **Node.js** (a version compatible with Angular 22 — Node 20.x or 22.x recommended)
+- **npm** 10+
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Getting Started
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Install dependencies:
 
 ```bash
-ng test
+npm install
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+Start the development server:
 
 ```bash
-ng e2e
+npm start
+# or: ng serve
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Then open [http://localhost:4200/](http://localhost:4200/). The app reloads automatically when you change source files.
 
-## Additional Resources
+## Available Scripts
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+| Script            | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `npm start`       | Run the dev server (`ng serve`).                    |
+| `npm run build`   | Production build; output goes to `dist/`.           |
+| `npm run watch`   | Development build in watch mode.                    |
+| `npm test`        | Run unit tests with Vitest (`ng test`).             |
+
+## Project Structure
+
+```
+src/
+├── main.ts                     # Application bootstrap
+├── index.html                  # Host page (loads Boxicons CDN)
+├── styles.css                  # Global styles
+└── app/
+    ├── app.ts                  # Root component (Header + RouterOutlet + Footer)
+    ├── app.config.ts           # Application providers (router, error listeners)
+    ├── app.routes.ts           # Route definitions
+    ├── services/
+    │   └── data.ts             # Data service + SingleTodo model (in-memory store)
+    ├── header/                 # Top navigation bar
+    ├── footer/                 # Footer
+    ├── todo-list/              # List view: cards, search, filter, sidebar
+    ├── create-todo/            # Create form
+    ├── edit-todo/              # Edit form (route param :id)
+    └── page-not-found/         # 404 view
+```
+
+## Routes
+
+| Path         | Component      | Description                          |
+| ------------ | -------------- | ------------------------------------ |
+| `/list`      | `TodoList`     | Default view — lists all todos.      |
+| `/create`    | `CreateTodo`   | Form to add a new todo.              |
+| `/todo/:id`  | `EditTodo`     | Edit the todo with the given id.     |
+| `` (empty)   | —              | Redirects to `/list`.                |
+| `**`         | `PageNotFound` | Fallback 404 for unknown routes.     |
+
+## Testing
+
+Unit tests run on the Vitest runner:
+
+```bash
+npm test
+```
+
+Spec files live alongside their components (`*.spec.ts`).
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+Optimized build artifacts are written to the `dist/` directory.
+
+## License
+
+This project is private and not currently published under an open-source license.
