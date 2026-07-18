@@ -1,0 +1,112 @@
+name: Claude Issue Triage
+
+# When an issue is opened or reopened, a Claude-powered bot reads it and triages
+# it: applying a type label, a priority label, and posting a short triage summary.
+#
+# ┌───────────────────────────────────────────────────────────────────────────┐
+# │ ACTION POLICY                                                               │
+# ├───────────────────────────────────────────────────────────────────────────┤
+# │ ✅ AUTOMATIC  — Adding labels (type + priority + `needs-info`), and posting  │
+# │                 a triage summary comment. These are low-risk and reversible. │
+# │                                                                             │
+# │ 🛑 NEEDS HUMAN APPROVAL — Closing an issue (duplicate / invalid / spam /     │
+# │                 wontfix), assigning it to a person, editing the title/body,  │
+# │                 or converting it. The bot NEVER does these. Instead it adds  │
+# │                 the `needs-human-triage` label and writes its recommendation │
+# │                 in the comment, marked [NEEDS HUMAN APPROVAL], for a         │
+# │                 maintainer to action.                                        │
+# └───────────────────────────────────────────────────────────────────────────┘
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write # to add labels and post the triage comment
+  contents: read
+  id-token: write # required by claude-code-action to request an OIDC token
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      # Create the triage label taxonomy up front so the bot's --add-label calls
+      # always succeed and the vocabulary stays fixed/predictable (idempotent).
+      - name: Ensure triage labels exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          ensure() { gh label create "$1" --repo "$REPO" --color "$2" --description "$3" 2>/dev/null || true; }
+          # Type
+          ensure "type: bug"      "d73a4a" "Something is not working"
+          ensure "type: feature"  "a2eeef" "New feature or request"
+          ensure "type: docs"     "0075ca" "Documentation only"
+          ensure "type: question" "d876e3" "A question or support request"
+          ensure "type: chore"    "fef2c0" "Maintenance / tooling / refactor"
+          # Priority
+          ensure "priority: P0"   "b60205" "Critical — broken app / data loss / security"
+          ensure "priority: P1"   "d93f0b" "High — major feature broken or blocking"
+          ensure "priority: P2"   "fbca04" "Medium — should be addressed soon"
+          ensure "priority: P3"   "0e8a16" "Low — minor / nice to have"
+          # Flags
+          ensure "needs-info"          "e4e669" "More information needed from the reporter"
+          ensure "needs-human-triage"  "5319e7" "Bot recommends a maintainer decision (close/assign/etc.)"
+
+      - name: Claude triages the issue
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No checkout in this job, so tell gh which repo every command targets.
+          GH_REPO: ${{ github.repository }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are an automated issue-triage bot for a repository. Be concise and
+            act only within the permissions described below.
+
+            Repository: ${{ github.repository }}
+            Issue number: ${{ github.event.issue.number }}
+
+            ## Context about this project
+            "ToDo" is a small front-end-only Angular todo-list demo app. There is
+            NO backend, database, or persistence — todos live in memory and reset
+            on reload. Bugs about "my todos disappeared after refresh" are expected
+            behavior, not defects. Read CLAUDE.md and README.md if you need more.
+
+            ## Steps
+            1. Read the issue: `gh issue view ${{ github.event.issue.number }} --comments`.
+            2. Classify it and choose labels from THIS fixed vocabulary only:
+               - Exactly one type: `type: bug`, `type: feature`, `type: docs`,
+                 `type: question`, or `type: chore`.
+               - Exactly one priority: `priority: P0` (critical/security/broken app),
+                 `priority: P1` (major/blocking), `priority: P2` (normal),
+                 `priority: P3` (minor/nice-to-have). For a small demo app, default
+                 to P2/P3 unless it is clearly severe.
+               - Add `needs-info` if the report lacks the detail needed to act
+                 (no steps to reproduce, no expected/actual, etc.).
+
+            ## AUTOMATIC actions — you SHOULD do these
+            - Apply the chosen labels:
+              `gh issue edit ${{ github.event.issue.number }} --add-label "type: X" --add-label "priority: Y"`
+              (add `--add-label "needs-info"` too when appropriate).
+            - Post ONE short triage comment with `gh issue comment`.
+
+            ## NEEDS HUMAN APPROVAL — you must NOT do these yourself
+            Do NOT close, assign, reopen, edit the title/body, or delete anything.
+            If you believe the issue should be closed (duplicate/invalid/spam/
+            expected-behavior/wontfix) or assigned to someone, DO NOT do it.
+            Instead:
+              - Add the `needs-human-triage` label, and
+              - Put your recommendation in the comment prefixed with
+                `🛑 [NEEDS HUMAN APPROVAL]`.
+
+            ## Comment format
+              - First line: `🤖 Auto-triage` then the labels you applied.
+              - 1–3 sentences summarizing the issue and your reasoning.
+              - If applicable, a final `🛑 [NEEDS HUMAN APPROVAL]: <recommendation>`
+                line (e.g. "looks like a duplicate of #12 — consider closing").
+              - Nothing else. No code review, no fixes.
+          claude_args: |
+            --max-turns 10
+            --allowedTools "Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh issue edit:*),Bash(gh label list:*),Read,Grep,Glob"
