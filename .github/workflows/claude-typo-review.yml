@@ -1,0 +1,59 @@
+name: Claude Typo Review
+
+# Runs a Claude-powered bot on every pull request that scans the changed lines
+# for typos/spelling mistakes and posts a short report as a PR comment.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write  # required by claude-code-action to request an OIDC token
+
+jobs:
+  typo-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Claude typo review
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Lets the `gh` CLI calls Claude makes authenticate against this repo.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            You are a typo-checking bot for pull requests. Be strict and concise.
+
+            Repository: ${{ github.repository }}
+            PR number: ${{ github.event.pull_request.number }}
+
+            Steps:
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the
+               diff for this PR.
+            2. Review ONLY the added/changed lines (lines starting with `+`) for
+               spelling mistakes and typos in:
+                 - code comments
+                 - documentation and Markdown
+                 - user-facing strings and UI text
+                 - identifiers (variable/function names) only when clearly misspelled
+            3. Ignore everything that is not a typo: code style, logic, formatting,
+               naming preferences. Do NOT flag intentional abbreviations, technical
+               jargon, framework keywords, or valid code tokens.
+            4. Post exactly ONE short PR comment with your findings using:
+               `gh pr comment ${{ github.event.pull_request.number }} --body "<report>"`
+
+            Report format (keep it short — this is a quick check, not a full review):
+              - First line: a summary, e.g. `✅ No typos found` or `📝 Found N typo(s)`.
+              - If typos exist, a bullet list. Each bullet on its own line:
+                `path/to/file:line — "wrong" → "correct"`
+              - Nothing else. No praise, no unrelated commentary, no code review.
+          claude_args: |
+            --max-turns 8
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Read,Grep,Glob"
