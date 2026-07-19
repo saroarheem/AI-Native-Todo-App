@@ -150,8 +150,9 @@ jobs:
             printf 'STATUS: ERROR\n\nThe typo bot did not produce a report (Claude step outcome: %s). Check the workflow run logs for the "Claude scans and fixes safe typos" step.\n' "$CLAUDE_OUTCOME" > "$REPORT"
           fi
 
-          STATUS=$(head -n 1 "$REPORT" | sed -n 's/^STATUS:[[:space:]]*//p')
-          [ -z "$STATUS" ] && STATUS="UNKNOWN"
+          # Parse the report's STATUS via the unit-tested helper (single source
+          # of truth; see .github/scripts/classify-change.test.sh).
+          STATUS=$(bash .github/scripts/classify-change.sh status < "$REPORT")
 
           # Compose a comment: a marker banner followed by the bot's report body.
           comment() { printf '%s\n\n---\n\n%s\n' "$1" "$(cat "$REPORT")"; }
@@ -160,60 +161,54 @@ jobs:
           git add -A -- ':!typo-report.md'
           CHANGED=$(git diff --cached --name-only || true)
 
-          if [ -n "$CHANGED" ]; then
-            # SAFETY GATE 1 (workflow-enforced): only comment/doc-bearing file
-            # types may be auto-fixed. A code change triggers a build check.
-            UNSAFE=0
-            NEEDS_BUILD=0
-            while IFS= read -r f; do
-              [ -z "$f" ] && continue
-              case "$f" in
-                *.md|*.markdown|*.txt) ;;                  # prose: no build impact
-                *.ts|*.html|*.css|*.scss) NEEDS_BUILD=1 ;; # source: verify it builds
-                *) UNSAFE=1; echo "Refusing to auto-apply: unexpected file changed -> $f" ;;
-              esac
-            done <<< "$CHANGED"
+          # Classify the proposed file changes with the unit-tested helper:
+          #   NONE | PROSE_ONLY | NEEDS_BUILD | UNSAFE
+          INSPECT=$(printf '%s\n' "$CHANGED" | bash .github/scripts/classify-change.sh inspect)
 
-            if [ "$UNSAFE" -eq 1 ]; then
-              git reset --hard
-              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The bot tried to change files outside comments/docs, so nothing was pushed. Details below.')"
-              exit 0
-            fi
-
-            # SAFETY GATE 2 (workflow-enforced): if any source file was touched,
-            # the project must still build. A comment-only edit keeps it green.
-            if [ "$NEEDS_BUILD" -eq 1 ]; then
-              npm ci
-              if ! npm run build; then
-                git reset --hard
-                gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The typo edits would break the build, so nothing was pushed. A human should apply them. Details below.')"
-                exit 0
-              fi
-            fi
-
-            # Safe -> push automatically to the PR branch.
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit \
-              -m "docs: auto-fix typos in comments/docs (bot)" \
-              -m "Applied automatically by the Claude typo bot. Only comment and documentation text was changed. See the PR comment for details." \
-              -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-            # Push with an explicitly tokenized URL rather than relying on the
-            # credentials actions/checkout persists (which can be reset by earlier
-            # steps). GH_TOKEN is masked in logs; GITHUB_REPOSITORY is built in.
-            git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${HEAD_REF}"
-            SHA=$(git rev-parse --short HEAD)
-            FILES=$(echo "$CHANGED" | paste -sd ',' - | sed 's/,/, /g')
-            gh pr comment "$PR" --body "$(comment "✅ **[AUTOMATIC]** Fixed typos in comments/docs (${FILES}), verified the build, and pushed \`${SHA}\` to this PR branch. Anything needing human approval is listed below.")"
-            exit 0
+          # SAFETY GATE 2 (workflow-enforced): only run — and require — the build
+          # when a buildable source file was touched. A comment-only or prose edit
+          # skips it. The pass/fail result feeds the decision below.
+          BUILD=skip
+          if [ "$INSPECT" = "NEEDS_BUILD" ]; then
+            npm ci
+            if npm run build; then BUILD=pass; else BUILD=fail; fi
           fi
 
-          # No files were changed by the bot.
-          case "$STATUS" in
+          # Final action from the unit-tested decision logic. SAFETY GATE 1 (only
+          # comment/doc file types may auto-apply) is enforced inside `decide`.
+          DECISION=$(bash .github/scripts/classify-change.sh decide "$STATUS" "$INSPECT" "$BUILD")
+
+          case "$DECISION" in
+            ESCALATE_UNSAFE)
+              git reset --hard
+              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The bot tried to change files outside comments/docs, so nothing was pushed. Details below.')" ;;
+
+            ESCALATE_BUILD)
+              git reset --hard
+              gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The typo edits would break the build, so nothing was pushed. A human should apply them. Details below.')" ;;
+
+            PUSH)
+              # Safe -> commit and push automatically to the PR branch.
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git commit \
+                -m "docs: auto-fix typos in comments/docs (bot)" \
+                -m "Applied automatically by the Claude typo bot. Only comment and documentation text was changed. See the PR comment for details." \
+                -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+              # Push with an explicitly tokenized URL rather than relying on the
+              # credentials actions/checkout persists (which can be reset by earlier
+              # steps). GH_TOKEN is masked in logs; GITHUB_REPOSITORY is built in.
+              git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${HEAD_REF}"
+              SHA=$(git rev-parse --short HEAD)
+              FILES=$(echo "$CHANGED" | paste -sd ',' - | sed 's/,/, /g')
+              gh pr comment "$PR" --body "$(comment "✅ **[AUTOMATIC]** Fixed typos in comments/docs (${FILES}), verified the build, and pushed \`${SHA}\` to this PR branch. Anything needing human approval is listed below.")" ;;
+
             CLEAN)
               gh pr comment "$PR" --body "$(comment '✅ No typos found in the changed lines.')" ;;
+
             APPROVAL_ONLY)
               gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** Found typos that should not be auto-fixed (in identifiers or strings). A human should decide. Details below.')" ;;
+
             *)
               gh pr comment "$PR" --body "$(comment '🛑 **[NEEDS HUMAN APPROVAL]** The typo bot did not complete normally. Details below.')" ;;
           esac
